@@ -155,4 +155,5 @@ class RLE_Test {
         String[] args = {"-u", "unknownFile.txt"};
         assertThrows(FileNotFoundException.class, () -> new Pack_RLE().main(args));
     }
+
 }
