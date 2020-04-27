@@ -50,7 +50,8 @@ class RLELogics {
         }
 
         if (!packingFlag && !unpackingFlag) {
-            throw new IllegalArgumentException("Invalid flags. You should choose packing flag -z or unpacking flag -u.");
+            System.err.println("Invalid flags. You should choose packing flag -z or unpacking flag -u.");
+            System.exit(1);
         }
 
         try {
@@ -62,7 +63,8 @@ class RLELogics {
             }
             writer.close();
         } catch (FileNotFoundException e) {
-            throw new FileNotFoundException("Invalid file name. File not found.");
+            System.err.println("Invalid file name. File not found.");
+            System.exit(1);
         }
     }
 
