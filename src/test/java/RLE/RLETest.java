@@ -33,6 +33,7 @@ class RLETest {
 
     }
 
+
     @Test
     void packingTest_3() throws IOException, CmdLineException {
         String[] args = {"-z", "-out", "src/test/resources/PackingTesting/OutputPackingTest.txt",

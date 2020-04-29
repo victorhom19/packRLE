@@ -3,23 +3,32 @@ package RLE;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+
 
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
 import org.kohsuke.args4j.Option;
 
+import static RLE.StringUtilities.isNumber;
 import static java.lang.Math.abs;
 
 class RLELogics {
 
-    private enum EncodingMode {
-        collectingMixedCount,
-        collectingRepeatingSymbolsCount,
-        encodingRun
+    private enum CodingMode {
+        start,
+        codingM,
+        codingR
     }
+
+    private enum EncodingMode {
+        start,
+        encodingM,
+        encodingR,
+        encodingMN,
+        encodingRN
+    }
+
 
     @Option(name = "-z")
     private boolean packingFlag;
@@ -33,13 +42,14 @@ class RLELogics {
     @Argument
     private List<String> arguments = new ArrayList<>();
 
+    CmdLineParser parser = new CmdLineParser(this);
+
+    String inputFileName;
+    String outputFileName;
+
     RLELogics(String[] args) throws IOException, CmdLineException {
 
-        CmdLineParser parser = new CmdLineParser(this);
         parser.parseArgument(args);
-
-        String inputFileName;
-        String outputFileName;
 
         if (outFlag) {
             outputFileName = arguments.get(0);
@@ -51,6 +61,11 @@ class RLELogics {
 
         if (!packingFlag && !unpackingFlag) {
             System.err.println("Invalid flags. You should choose packing flag -z or unpacking flag -u.");
+            System.exit(1);
+        }
+
+        if (new File(inputFileName).length() < 2) {
+            System.err.println("File length is too small. Unable to code/decode");
             System.exit(1);
         }
 
@@ -69,176 +84,138 @@ class RLELogics {
     }
 
 
-
     private String packingPhase(String file) {
 
         StringBuilder newFile = new StringBuilder();
-
-        int repeatingCounter = 1;
-        int mixedCounter = -1;
-
-        Pattern numberPattern = Pattern.compile("\\d");
-        Matcher numberMatcher;
-
-        boolean codingNumbers = false;
-
+        CodingMode mode = CodingMode.start;
         StringBuilder buffer = new StringBuilder(Character.toString(file.charAt(0)));
 
+        int bLastIndex;
+
         for (int i = 1; i < file.length(); i++) {
-            String nextSymbol = Character.toString(file.charAt(i));
-            numberMatcher = numberPattern.matcher(Character.toString(buffer.charAt(0)));
+            buffer.append(file.charAt(i));
+            bLastIndex = buffer.length() - 1;
 
-            if (nextSymbol.equals(Character.toString(buffer.charAt(buffer.length() - 1)))) {
-
-                repeatingCounter++;
-                if (mixedCounter != -1) {
-                    codingNumbers = numberMatcher.matches();
-
-                    if (codingNumbers) {
-                        newFile.append(0).append("-");
-                        newFile.append(buffer.substring(0, buffer.length() - 1)).append("/");
-                    } else {
-                        newFile.append(mixedCounter + 1).append(buffer.substring(0, buffer.length() - 1));
-                    }
-
-                    repeatingCounter = 2;
-                    mixedCounter = -1;
-                    buffer = new StringBuilder().append(nextSymbol);
+            if (buffer.charAt(bLastIndex) == (buffer.charAt(bLastIndex - 1))) {
+                if (mode == CodingMode.codingM) {
+                    newFile.append(codeSymbols(buffer.substring(0, bLastIndex - 1), -(bLastIndex - 1)));
+                    buffer.delete(0, bLastIndex - 1);
                 }
+                mode = CodingMode.codingR;
+
             } else {
-
-                mixedCounter--;
-                if (repeatingCounter != 1) {
-                    codingNumbers = numberMatcher.matches();
-
-                    if (codingNumbers) {
-                        newFile.append(0).append(repeatingCounter);
-                        newFile.append(buffer.charAt(buffer.length() - 1)).append("/");
-                    } else {
-                        newFile.append(repeatingCounter).append(buffer.charAt(buffer.length() - 1));
-                    }
-
-                    repeatingCounter = 1;
-                    mixedCounter = -1;
-                    buffer = new StringBuilder();
+                if (mode == CodingMode.codingR) {
+                    newFile.append(codeSymbols(buffer.substring(0, 1), bLastIndex));
+                    buffer.delete(0, bLastIndex);
+                    mode = CodingMode.start;
+                } else {
+                    mode = CodingMode.codingM;
                 }
-
-                buffer.append(nextSymbol);
-            }
-
-        }
-
-        if (mixedCounter != -1) {
-            if (codingNumbers) {
-                newFile.append(0).append("-");
-                newFile.append(buffer).append("/");
-            } else {
-                newFile.append(mixedCounter).append(buffer);
             }
         }
-        if (repeatingCounter != 1) {
-            if (codingNumbers) {
-                newFile.append(0).append(repeatingCounter);
-                newFile.append(buffer.charAt(buffer.length() - 1)).append("/");
-            } else {
-                newFile.append(repeatingCounter).append(buffer.charAt(buffer.length() - 1));
-            }
+        bLastIndex = buffer.length() - 1;
+        if (mode == CodingMode.codingM) {
+            newFile.append(codeSymbols(buffer.substring(0, bLastIndex + 1), -(bLastIndex + 1)));
+        } else {
+            newFile.append(codeSymbols(buffer.substring(0, 1), bLastIndex + 1));
         }
         return (newFile.toString());
     }
 
+    String codeSymbols(String receivedBuffer, int counter) {
+        StringBuilder result = new StringBuilder();
+        boolean codingNumbers = isNumber(Character.toString(receivedBuffer.charAt(0)));
+        if (counter < 0) {
+            if (codingNumbers) {
+                result.append(0).append("-");
+                result.append(receivedBuffer).append("/");
+            } else {
+                result.append(counter).append(receivedBuffer);
+            }
+        } else {
+            if (codingNumbers) {
+                result.append(0).append(counter);
+                result.append(receivedBuffer).append("/");
+            } else {
+                result.append(counter).append(receivedBuffer);
+            }
+        }
+        return (result.toString());
+    }
 
     private String unpackingPhase(String file) {
         StringBuilder newFile = new StringBuilder();
-
-        Pattern numberPattern = Pattern.compile("\\d");
-        Matcher numberMatcher;
-
-        StringBuilder counter = new StringBuilder();
-        StringBuilder line = new StringBuilder();
-        EncodingMode mode = EncodingMode.encodingRun;
-
+        EncodingMode mode = EncodingMode.start;
+        StringBuilder buffer = new StringBuilder();
+        int counter = 0;
 
         for (int i = 0; i < file.length(); i++) {
-
-            if (Character.toString(file.charAt(i)).equals("/")) {
-                if (i + 1 >= file.length()) {
+            switch (mode) {
+                case start:
+                    buffer = new StringBuilder(Character.toString(file.charAt(i)));
+                    if (buffer.charAt(buffer.length() - 1) == '0') {
+                        i++;
+                        buffer.append(file.charAt(i));
+                        if (buffer.charAt(buffer.length() - 1) == '-') {
+                            mode = EncodingMode.encodingMN;
+                            i++;
+                            buffer = new StringBuilder(Character.toString(file.charAt(i)));
+                        } else {
+                            mode = EncodingMode.encodingRN;
+                            buffer = new StringBuilder(Character.toString(file.charAt(i)));
+                        }
+                    } else if (buffer.charAt(buffer.length() - 1) == '-') {
+                        mode = EncodingMode.encodingM;
+                        i++;
+                        buffer = new StringBuilder(Character.toString(file.charAt(i)));
+                    } else if (isNumber(buffer.charAt(buffer.length() - 1))) {
+                        mode = EncodingMode.encodingR;
+                    }
+                    counter = 0;
                     break;
-                } else {
-                    i ++;
-                }
-            }
-
-            String nextSymbol = Character.toString(file.charAt(i));
-            numberMatcher = numberPattern.matcher(nextSymbol);
-
-            if (nextSymbol.equals("-")) {
-
-                if (mode == EncodingMode.encodingRun) {
-                    mode = EncodingMode.collectingMixedCount;
-                    counter.append(nextSymbol);
-
-                } else {
-                    line = new StringBuilder(nextSymbol);
-                    mode = EncodingMode.encodingRun;
-
-                }
-
-            } else if (nextSymbol.equals("0")) {
-
-                if (mode == EncodingMode.encodingRun) {
-                    if (file.charAt(i + 1) == '-') {
-                        int fragmentLength = -2;
-                        while (!(nextSymbol.equals("/"))) {
-                            i++;
-                            nextSymbol = Character.toString(file.charAt(i));
-                            fragmentLength ++;
-                        }
-                        i -= fragmentLength;
-                        counter.append(-1 * (fragmentLength));
-                        line.append(file.charAt(i));
-                    } else {
-                        int c = 0;
-                        while (!(nextSymbol.equals("/"))) {
-                            i++;
-                            nextSymbol = Character.toString(file.charAt(i));
-                            c ++;
-                        }
-                        line.append(file.charAt(i - 1));
-                        counter.append(Integer.parseInt(file.substring(i - c + 1, i - 1)));
+                case encodingMN:
+                    while (file.charAt(i) != '/') {
+                        buffer.append(file.charAt(i));
+                        i++;
                     }
-                } else {
-                    counter.append(nextSymbol);
-                }
-
-            } else if (numberMatcher.matches()) {
-                if (mode == EncodingMode.encodingRun) {
-                    mode = EncodingMode.collectingRepeatingSymbolsCount;
-                }
-                counter.append(nextSymbol);
-
-            } else {
-                mode = EncodingMode.encodingRun;
-                line.append(nextSymbol);
-            }
-
-
-            if (mode == EncodingMode.encodingRun) {
-
-                if (Integer.parseInt(counter.toString()) > 0) {
-                    newFile.append(line.toString().repeat(Integer.parseInt(counter.toString())));
-                } else {
-                    for (int j = 0; j > Integer.parseInt(counter.toString()) + 1; j--) {
-                        line.append(file.charAt(i - j + 1));
+                    counter = 1;
+                    mode = EncodingMode.start;
+                    break;
+                case encodingRN:
+                    while (file.charAt(i) != '/') {
+                        buffer.append(file.charAt(i));
+                        i++;
                     }
-                    newFile.append(line.toString());
-                    i += abs(Integer.parseInt(counter.toString())) - 1;
-                }
-                line = new StringBuilder();
-                counter = new StringBuilder();
+                    counter = Integer.parseInt(buffer.substring(0, buffer.length() - 1));
+                    buffer.delete(0, buffer.length() - 1);
+                    mode = EncodingMode.start;
+                    break;
+                case encodingM:
+                    while (isNumber(file.charAt(i))) {
+                        buffer.append(file.charAt(i));
+                        i++;
+                    }
+                    counter = Integer.parseInt(buffer.toString());
+                    buffer = new StringBuilder(Character.toString(file.charAt(i)));
+                    for (int j = 1; j < counter; j++) {
+                        buffer.append(file.charAt(i + j));
+                    }
+                    i += counter - 1;
+                    counter = 1;
+                    mode = EncodingMode.start;
+                    break;
+                case encodingR:
+                    while (isNumber(file.charAt(i))) {
+                        buffer.append(file.charAt(i));
+                        i++;
+                    }
+                    counter = Integer.parseInt(buffer.toString());
+                    buffer = new StringBuilder(Character.toString(file.charAt(i)));
+                    mode = EncodingMode.start;
+                    break;
             }
+            newFile.append(buffer.toString().repeat(counter));
         }
-
         return (newFile.toString());
     }
 
