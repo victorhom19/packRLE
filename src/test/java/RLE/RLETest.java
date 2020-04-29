@@ -10,7 +10,6 @@ import static RLE.FileUtilities.getContent;
 
 class RLETest {
 
-
     @Test
     void packingTest_1() throws IOException, CmdLineException {
         String[] args = {"-z", "-out", "src/test/resources/PackingTesting/OutputPackingTest.txt",
