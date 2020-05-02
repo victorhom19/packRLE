@@ -1,8 +1,6 @@
 package RLE;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.List;
 
 
 import org.kohsuke.args4j.Argument;
@@ -37,44 +35,38 @@ class RLELogics {
     private boolean unpackingFlag;
 
     @Option(name = "-out")
-    private boolean outFlag;
+    File outputFile;
+
+
 
     @Argument
-    private List<String> arguments = new ArrayList<>();
+    File inputFile;
 
     CmdLineParser parser = new CmdLineParser(this);
-
-    String inputFileName;
-    String outputFileName;
 
     RLELogics(String[] args) throws IOException, CmdLineException {
 
         parser.parseArgument(args);
-
-        if (outFlag) {
-            outputFileName = arguments.get(0);
-            inputFileName = arguments.get(1);
-        } else {
-            outputFileName = "output.txt";
-            inputFileName = arguments.get(0);
-        }
 
         if (!packingFlag && !unpackingFlag) {
             System.err.println("Invalid flags. You should choose packing flag -z or unpacking flag -u.");
             System.exit(1);
         }
 
-        if (new File(inputFileName).length() < 2) {
+        if (inputFile.length() < 2) {
             System.err.println("File length is too small. Unable to code/decode");
             System.exit(1);
         }
 
         try {
-            BufferedWriter writer = new BufferedWriter(new FileWriter(outputFileName));
+            if (outputFile == null) {
+                outputFile = new File(inputFile.toString() + ".zip");
+            }
+            BufferedWriter writer = new BufferedWriter(new FileWriter(outputFile));
             if (packingFlag) {
-                writer.write(packingPhase(FileUtilities.getContent(inputFileName)));
+                writer.write(packingPhase(FileUtilities.getContent(inputFile)));
             } else if (unpackingFlag) {
-                writer.write(unpackingPhase(FileUtilities.getContent(inputFileName)));
+                writer.write(unpackingPhase(FileUtilities.getContent(inputFile)));
             }
             writer.close();
         } catch (FileNotFoundException e) {

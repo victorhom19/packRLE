@@ -1,13 +1,14 @@
 package RLE;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import static org.junit.jupiter.api.Assertions.*;
 
 class FileUtilities {
-    static String getContent(String inputFileName) throws IOException {
-        BufferedReader reader = new BufferedReader(new FileReader(inputFileName));
+    static String getContent(File inputFile) throws IOException {
+        BufferedReader reader = new BufferedReader(new FileReader(inputFile));
         StringBuilder text = new StringBuilder();
         String line = reader.readLine();
         while (line != null) {
@@ -21,8 +22,8 @@ class FileUtilities {
         return text.toString();
     }
 
-    static void assertFileContent(String fileName, String expectedContent) throws IOException {
-        assertEquals(expectedContent, getContent(fileName));
+    static void assertFileContent(File fileToAssert, String expectedContent) throws IOException {
+        assertEquals(expectedContent, getContent(fileToAssert));
     }
 
 }
