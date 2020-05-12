@@ -1,4 +1,7 @@
 RLE\PackRLE.class
-RLE\RLELogics.class
+RLE\StringUtilities.class
 RLE\FileUtilities.class
+RLE\RLELogics$1.class
+RLE\RLELogics$CodingMode.class
 RLE\RLELogics$EncodingMode.class
+RLE\RLELogics.class

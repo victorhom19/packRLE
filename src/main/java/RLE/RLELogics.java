@@ -9,7 +9,8 @@ import org.kohsuke.args4j.CmdLineParser;
 import org.kohsuke.args4j.Option;
 
 import static RLE.StringUtilities.isNumber;
-import static java.lang.Math.abs;
+import static RLE.StringUtilities.repeat;
+
 
 class RLELogics {
 
@@ -60,7 +61,13 @@ class RLELogics {
 
         try {
             if (outputFile == null) {
-                outputFile = new File(inputFile.toString() + ".zip");
+                if (packingFlag) {
+                    int fileNameLength = inputFile.toString().length();
+                    outputFile = new File(inputFile.toString().substring(0, fileNameLength - 4) + ".rle");
+                } else {
+                    int fileNameLength = inputFile.toString().length();
+                    outputFile = new File(inputFile.toString().substring(0, fileNameLength - 4) + ".txt");
+                }
             }
             BufferedWriter writer = new BufferedWriter(new FileWriter(outputFile));
             if (packingFlag) {
@@ -206,7 +213,7 @@ class RLELogics {
                     mode = EncodingMode.start;
                     break;
             }
-            newFile.append(buffer.toString().repeat(counter));
+            newFile.append(repeat(buffer.toString(),counter));
         }
         return (newFile.toString());
     }
